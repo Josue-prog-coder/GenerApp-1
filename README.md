@@ -1,6 +1,6 @@
-# ihc_project
+# IHC project
 
-A new Flutter project.
+
 
 ## Getting Started
 
