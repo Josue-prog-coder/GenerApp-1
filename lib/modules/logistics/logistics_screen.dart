@@ -31,6 +31,48 @@ class _LogisticsScreenState extends State<LogisticsScreen> {
     final isCoordinator = authProvider.isCoordinator; // Control de rol
     final imagePath = logisticsProvider.getImagePath(_selectedDay);
 
+// Método para eliminar y limpiar la imagen del día
+    void _deleteImage() {
+      // Usamos un diálogo de confirmación antes de borrar
+      showDialog(
+        context: context,
+        builder: (BuildContext dialogContext) {
+          return AlertDialog(
+            title: const Text('Confirmar Eliminación', style: TextStyle(color: Colors.red)),
+            content: const Text('¿Estás seguro de que deseas eliminar la imagen de logística de este día?'),
+            actions: <Widget>[
+              TextButton(
+                child: const Text('Cancelar', style: TextStyle(color: Colors.black54)),
+                onPressed: () {
+                  Navigator.of(dialogContext).pop();
+                },
+              ),
+              ElevatedButton(
+                style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+                child: const Text('Eliminar', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                onPressed: () {
+                  // 1. Ejecutar la eliminación
+                  logisticsProvider.clearImagePath(_selectedDay);
+                  
+                  // 2. Cerrar el diálogo
+                  Navigator.of(dialogContext).pop();
+                  
+                  // 3. 🆕 Mostrar SnackBar con fondo rojo
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('🗑️ Logística eliminada con éxito.'),
+                      backgroundColor: Colors.red,
+                      duration: Duration(seconds: 2),
+                    ),
+                  );
+                },
+              ),
+            ],
+          );
+        },
+      );
+    }
+
     return Scaffold(
       body: CustomScrollView(
         slivers: [
@@ -149,6 +191,9 @@ class _LogisticsScreenState extends State<LogisticsScreen> {
                               );
                             },
                       isEditable: isCoordinator,
+                      // Llama al nuevo _deleteImage con diálogo y SnackBar rojo
+                      onDelete: isCoordinator && imagePath != null ? _deleteImage : null, 
+                      // Solo permite eliminar si es Coordinador Y ya hay una imagen cargada
                     ),
                   ],
                 ),

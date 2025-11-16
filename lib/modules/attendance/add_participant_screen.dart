@@ -17,8 +17,11 @@ class _AddParticipantScreenState extends State<AddParticipantScreen> {
   final TextEditingController _nameController = TextEditingController();
   final TextEditingController _phoneController = TextEditingController();
   
-  bool _isLeader = false; // Líder Destacado (Estrella)
-  bool _isAmbassador = false; // Embajador Generoso (Insignia)
+  // 📢 CAMBIO: Eliminamos las variables de estado de rol de aquí.
+  // Los roles originales se guardarán y devolverán en _saveParticipant.
+  late bool _initialIsLeader;
+  late bool _initialIsAmbassador;
+
 
   @override
   void initState() {
@@ -26,8 +29,12 @@ class _AddParticipantScreenState extends State<AddParticipantScreen> {
     if (widget.participantToEdit != null) {
       _nameController.text = widget.participantToEdit!.name;
       _phoneController.text = widget.participantToEdit!.phone;
-      _isLeader = widget.participantToEdit!.isLeader;
-      _isAmbassador = widget.participantToEdit!.isAmbassador;
+      // Guardamos los roles originales para que no se pierdan al devolver el objeto
+      _initialIsLeader = widget.participantToEdit!.isLeader;
+      _initialIsAmbassador = widget.participantToEdit!.isAmbassador;
+    } else {
+      _initialIsLeader = false;
+      _initialIsAmbassador = false;
     }
   }
 
@@ -39,13 +46,15 @@ class _AddParticipantScreenState extends State<AddParticipantScreen> {
   }
 
   void _saveParticipant() {
-    final newParticipant = Participant(
+    // Devolvemos el participante completo con los datos editados
+    // y manteniendo los roles originales.
+    final updatedParticipant = Participant(
       name: _nameController.text,
       phone: _phoneController.text,
-      isLeader: _isLeader,
-      isAmbassador: _isAmbassador,
+      isLeader: _initialIsLeader, 
+      isAmbassador: _initialIsAmbassador, 
     );
-    Navigator.pop(context, newParticipant);
+    Navigator.pop(context, updatedParticipant);
   }
 
   @override
@@ -64,7 +73,7 @@ class _AddParticipantScreenState extends State<AddParticipantScreen> {
             padding: const EdgeInsets.all(20.0),
             child: Container(
               // Establecemos el ancho máximo para que se vea más grande
-              width: screenWidth * 0.85, 
+              width: screenWidth * 0.85,
               padding: const EdgeInsets.all(24.0),
               decoration: BoxDecoration(
                 color: Colors.white,
@@ -82,7 +91,7 @@ class _AddParticipantScreenState extends State<AddParticipantScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   const Text(
-                    'Editar participante',
+                    'Editar datos básicos', // Texto actualizado
                     style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
                   ),
                   const SizedBox(height: 28), // Más espacio
@@ -98,41 +107,10 @@ class _AddParticipantScreenState extends State<AddParticipantScreen> {
                     label: 'Teléfono',
                     keyboardType: TextInputType.phone,
                   ),
-                  const SizedBox(height: 36), // Más espacio
+                  
+                  // 📢 CAMBIO: Eliminada la UI de los botones de rol (Destacado/Embajador)
 
-                  // Botones de Rol (Destacado y Embajador)
-                  Row(
-                    // Aumentamos el espacio entre los botones de rol
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween, 
-                    children: [
-                      // Botón Destacado (Líder)
-                      Expanded(
-                        child: _buildRoleButton(
-                          label: 'Destacado',
-                          isSelected: _isLeader,
-                          onPressed: () {
-                            setState(() {
-                              _isLeader = !_isLeader;
-                            });
-                          },
-                        ),
-                      ),
-                      const SizedBox(width: 16), // Separación entre botones de rol
-                      // Botón Embajador
-                      Expanded(
-                        child: _buildRoleButton(
-                          label: 'Embajador',
-                          isSelected: _isAmbassador,
-                          onPressed: () {
-                            setState(() {
-                              _isAmbassador = !_isAmbassador;
-                            });
-                          },
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 36),
+                  const SizedBox(height: 36), // Mantener el espacio antes de los botones de acción
 
                   // Botones de Cancelar y Guardar
                   Row(
@@ -206,34 +184,6 @@ class _AddParticipantScreenState extends State<AddParticipantScreen> {
     );
   }
   
-  // Widget para construir los botones de Rol con el efecto de color (Destacado/Embajador)
-  Widget _buildRoleButton({
-    required String label,
-    required bool isSelected,
-    required VoidCallback onPressed,
-  }) {
-    // El color de fondo y borde dependen de si está seleccionado
-    final Color buttonColor = isSelected ? const Color(0xFFFFCC00) : Colors.white; // Amarillo fuerte o Blanco
-    final Color borderColor = isSelected ? const Color(0xFFFFCC00) : Colors.black; // Borde del color seleccionado o negro
-    final Color textColor = Colors.black; // El texto es siempre negro
-
-    return OutlinedButton(
-      onPressed: onPressed,
-      style: OutlinedButton.styleFrom(
-        backgroundColor: buttonColor,
-        foregroundColor: textColor,
-        side: BorderSide(color: borderColor, width: 1.5),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-        padding: const EdgeInsets.symmetric(vertical: 14), // Más padding vertical
-        elevation: isSelected ? 4 : 0, // Añadir elevación si está seleccionado para resaltarlo
-      ),
-      child: Text(
-        label,
-        style: TextStyle(fontSize: 16, fontWeight: isSelected ? FontWeight.bold : FontWeight.normal),
-      ),
-    );
-  }
-  
   // Nuevo Widget para los botones de Acción (Cancelar/Guardar)
   Widget _buildActionButton({
     required String label,
@@ -244,7 +194,7 @@ class _AddParticipantScreenState extends State<AddParticipantScreen> {
       onPressed: onPressed,
       style: OutlinedButton.styleFrom(
         // INICIALMENTE: Fondo Blanco, Borde del Color
-        backgroundColor: Colors.white, 
+        backgroundColor: Colors.white,
         foregroundColor: color, // Color del texto
         side: BorderSide(color: color, width: 1.5),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(50)),

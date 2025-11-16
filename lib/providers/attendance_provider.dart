@@ -4,7 +4,8 @@ import 'package:flutter/material.dart';
 
 class AttendanceProvider extends ChangeNotifier {
   // Lista de días que se guarda de forma global
-  final List<String> _days = ['Día 1'];
+  // MODIFICACIÓN: Inicializamos con los tres días predefinidos.
+  final List<String> _days = ['Día 1', 'Día 2', 'Día 3'];
 
   // Mapa para guardar la asistencia por día y por participante
   final Map<String, Map<String, bool?>> _attendanceData = {};
@@ -12,7 +13,10 @@ class AttendanceProvider extends ChangeNotifier {
   List<String> get days => _days;
 
   // Método para añadir un nuevo día
+  // MODIFICACIÓN: La lógica de `addDay` es ahora más sencilla: añade el siguiente día consecutivo.
   void addDay(String newDay) {
+    // Si la lista ya contiene el nuevo día, simplemente salimos.
+    // Aunque la lógica del selector en la UI garantiza que solo se llamará cuando se necesite un nuevo día.
     if (!_days.contains(newDay)) {
       _days.add(newDay);
       notifyListeners();

@@ -80,13 +80,22 @@ class ParticipantProvider extends ChangeNotifier {
   
   // Métodos de gestión (add y update)
   void addParticipant(Participant participant) {
-    _allParticipants.add(participant);
+    // MODIFICACIÓN: Insertamos al inicio (índice 0) para que sea el primero en la lista
+    _allParticipants.insert(0, participant);
     notifyListeners();
   }
 
   void updateParticipant(int index, Participant newParticipant) {
     _allParticipants[index] = newParticipant;
     notifyListeners();
+  }
+
+// FUNCIÓN DE ELIMINACIÓN
+  void deleteParticipant(int index) {
+    if (index >= 0 && index < _allParticipants.length) {
+      _allParticipants.removeAt(index);
+      notifyListeners();
+    }
   }
 
     // Método para limpiar TODOS los filtros de búsqueda

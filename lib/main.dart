@@ -3,7 +3,9 @@ import 'package:ihc_project/providers/participant_provider.dart';
 import 'package:ihc_project/providers/attendance_provider.dart';
 import 'package:ihc_project/providers/logistics_provider.dart'; // <-- Nuevo Import
 import 'package:ihc_project/providers/auth_provider.dart'; // <-- Nuevo Import
+import 'package:ihc_project/providers/materials_provider.dart'; // <-- Nuevo Import
 import 'package:ihc_project/modules/authentication/login_screen.dart'; // Asegúrate de tener este import
+import 'package:ihc_project/providers/finances_provider.dart'; // <-- Nuevo Import
 import 'package:provider/provider.dart';
 
 void main() {
@@ -14,11 +16,14 @@ void main() {
         ChangeNotifierProvider(create: (context) => AttendanceProvider()),
         ChangeNotifierProvider(create: (context) => AuthProvider()),      // <-- Añadido AuthProvider
         ChangeNotifierProvider(create: (context) => LogisticsProvider()), // <-- Nuevo Provider de Logística
+        ChangeNotifierProvider(create: (context) => MaterialsProvider()), // <-- REGISTRO NUEVO
+        ChangeNotifierProvider(create: (context) => FinancesProvider()), // <-- REGISTRO NUEVO
       ],
       child: const MyApp(),
     ),
   );
 }
+
 
 class MyApp extends StatelessWidget {
   const MyApp({super.key});

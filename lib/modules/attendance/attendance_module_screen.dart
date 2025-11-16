@@ -2,10 +2,10 @@
 
 import 'package:flutter/material.dart';
 import 'package:ihc_project/modules/attendance/tabs/attendance_tab.dart';
-import 'package:ihc_project/modules/attendance/tabs/list_tab.dart';
+import 'package:ihc_project/modules/attendance/tabs/list_tab.dart'; 
 import 'package:ihc_project/modules/attendance/tabs/stats_tab.dart';
-import 'package:ihc_project/providers/participant_provider.dart'; // Importar provider
-import 'package:provider/provider.dart'; // Importar provider
+import 'package:ihc_project/providers/participant_provider.dart';
+import 'package:provider/provider.dart';
 
 // Convertimos a StatefulWidget
 class AttendanceModuleScreen extends StatefulWidget {
@@ -72,7 +72,8 @@ class _AttendanceModuleScreenState extends State<AttendanceModuleScreen> with Si
                   unselectedLabelColor: Colors.black,
                   tabs: const [
                     Tab(text: 'Asistencia'),
-                    Tab(text: 'Lista'),
+                    // CAMBIO APLICADO AQUÍ
+                    Tab(text: 'Participantes'), 
                     Tab(text: 'Estadísticas'),
                   ],
                 ),
