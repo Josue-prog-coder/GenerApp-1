@@ -1,10 +1,11 @@
-// Archivo: /lib/modules/logistics/image_upload_modal.dart (CÓDIGO CORREGIDO PARA ALERTAS)
+// Archivo: /lib/modules/logistics/image_upload_modal.dart
 
 import 'package:flutter/material.dart';
 import 'package:ihc_project/providers/logistics_provider.dart';
 import 'package:provider/provider.dart';
-import 'dart:io'; // Para manejar archivos de imagen (simulación)
+import 'dart:io'; 
 import 'package:image_picker/image_picker.dart';
+import 'package:firebase_storage/firebase_storage.dart'; // <-- Nuevo Import para Storage
 
 class ImageUploadModal extends StatefulWidget {
   final String day;
@@ -16,13 +17,14 @@ class ImageUploadModal extends StatefulWidget {
 
 class _ImageUploadModalState extends State<ImageUploadModal> {
   String? _tempImagePath;
+  bool _isUploading = false; // <-- Controla el estado de carga
   
-  // Obtenemos la ruta de la imagen existente al inicializar
   @override
   void initState() {
     super.initState();
-    final logisticsProvider = Provider.of<LogisticsProvider>(context, listen: false);
-    _tempImagePath = logisticsProvider.getImagePath(widget.day);
+    // La imagen inicial aquí era una ruta local en tu código original. 
+    // Si viene de Firebase (es un link http), ImagePicker no lo puede previsualizar como File.
+    // Solo permitiremos seleccionar una nueva imagen y mostrarla en File.
   }
 
   // Lógica de selección de imagen
@@ -37,28 +39,67 @@ class _ImageUploadModalState extends State<ImageUploadModal> {
     }
   }
   
-  // Lógica de guardado
-  void _saveImage() {
-    if (_tempImagePath != null) {
-      // Guardar la ruta en el Provider
-      Provider.of<LogisticsProvider>(context, listen: false)
-          .saveImagePath(widget.day, _tempImagePath!);
-      
-      // 🆕 NUEVA FUNCIONALIDAD: Mostrar SnackBar de éxito
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('✅ Imagen subida con éxito.'),
-          backgroundColor: Colors.green,
-          duration: Duration(seconds: 2),
-        ),
-      );
+  // Lógica de guardado en Firebase Storage
+  Future<void> _saveImage() async {
+    if (_tempImagePath == null) {
+      Navigator.pop(context);
+      return;
     }
-    Navigator.pop(context); // Cerrar modal
+
+    setState(() {
+      _isUploading = true;
+    });
+
+    try {
+      File file = File(_tempImagePath!);
+      
+      // Creamos una referencia única en Storage usando el nombre del día y la fecha exacta
+      String fileName = 'logistica_${widget.day.replaceAll(' ', '')}_${DateTime.now().millisecondsSinceEpoch}.jpg';
+      Reference ref = FirebaseStorage.instance.ref().child('logistica/$fileName');
+
+      // Subimos el archivo a Firebase Storage
+      UploadTask uploadTask = ref.putFile(file);
+      TaskSnapshot snapshot = await uploadTask;
+
+      // Obtenemos la URL de descarga pública
+      String downloadUrl = await snapshot.ref.getDownloadURL();
+
+      // Pasamos la URL al provider para que la guarde en Firestore
+      if (mounted) {
+        await Provider.of<LogisticsProvider>(context, listen: false)
+            .saveImagePath(widget.day, downloadUrl);
+
+        // Mostrar SnackBar de éxito
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('✅ Imagen subida con éxito.'),
+            backgroundColor: Colors.green,
+            duration: Duration(seconds: 2),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('❌ Error al subir la imagen: $e'),
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 3),
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isUploading = false;
+        });
+        Navigator.pop(context); // Cerrar modal
+      }
+    }
   }
   
   @override
   Widget build(BuildContext context) {
-    // La etiqueta del botón rojo cambia si ya hay una imagen en previsualización
     final bool imageSelected = _tempImagePath != null;
     final String redButtonLabel = imageSelected ? 'Cambiar Archivo' : 'Subir archivo';
     
@@ -81,12 +122,12 @@ class _ImageUploadModalState extends State<ImageUploadModal> {
             ),
             const SizedBox(height: 20),
 
-            // Contenedor de Previsualización (Ajustamos tamaño para el diseño)
+            // Contenedor de Previsualización
             GestureDetector(
-              onTap: _pickImage,
+              onTap: _isUploading ? null : _pickImage,
               child: Container(
                 height: 180,
-                padding: const EdgeInsets.all(8), // Padding para la previsualización
+                padding: const EdgeInsets.all(8), 
                 decoration: BoxDecoration(
                   color: Colors.grey[200],
                   borderRadius: BorderRadius.circular(12),
@@ -97,7 +138,7 @@ class _ImageUploadModalState extends State<ImageUploadModal> {
                             borderRadius: BorderRadius.circular(8),
                             child: Image.file(
                                 File(_tempImagePath!), 
-                                fit: BoxFit.contain, // Usamos contain para ver toda la imagen dentro del recuadro
+                                fit: BoxFit.contain,
                                 errorBuilder: (context, error, stackTrace) => 
                                   const Center(child: Text("Error de previsualización")),
                             ),
@@ -117,7 +158,7 @@ class _ImageUploadModalState extends State<ImageUploadModal> {
             
             // Botón Subir/Cambiar Archivo (Botón Rojo)
             ElevatedButton(
-              onPressed: _pickImage,
+              onPressed: _isUploading ? null : _pickImage,
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.red,
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
@@ -132,7 +173,7 @@ class _ImageUploadModalState extends State<ImageUploadModal> {
               children: [
                 Expanded(
                   child: OutlinedButton(
-                    onPressed: () => Navigator.pop(context),
+                    onPressed: _isUploading ? null : () => Navigator.pop(context),
                     style: OutlinedButton.styleFrom(
                       foregroundColor: Colors.red,
                       side: const BorderSide(color: Colors.red),
@@ -145,14 +186,20 @@ class _ImageUploadModalState extends State<ImageUploadModal> {
                 const SizedBox(width: 16),
                 Expanded(
                   child: OutlinedButton(
-                    onPressed: _saveImage,
+                    onPressed: _isUploading ? null : _saveImage,
                     style: OutlinedButton.styleFrom(
                       foregroundColor: Colors.green,
                       side: const BorderSide(color: Colors.green),
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(50)),
                       padding: const EdgeInsets.symmetric(vertical: 14),
                     ),
-                    child: const Text('Guardar', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                    child: _isUploading 
+                        ? const SizedBox(
+                            height: 20,
+                            width: 20,
+                            child: CircularProgressIndicator(color: Colors.green, strokeWidth: 2),
+                          )
+                        : const Text('Guardar', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
                   ),
                 ),
               ],

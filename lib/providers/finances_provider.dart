@@ -1,20 +1,14 @@
 // Archivo: /lib/providers/finances_provider.dart
 
 import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart'; // <-- Nuevo Import
 import 'package:ihc_project/models/product_model.dart';
 
 class FinancesProvider extends ChangeNotifier {
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+
   // --- CATALOGO DE PRODUCTOS ---
-  final List<Product> _products = [
-    // Datos de prueba iniciales
-    Product(id: '1', name: 'Vaso de Fruta', price: 15.00),
-    Product(id: '2', name: 'Agua 500 ml', price: 10.00),
-    Product(id: '3', name: 'Gordita De Azúcar', price: 5.00),
-    Product(id: '4', name: 'Sticker Pequeño', price: 2.00),
-    Product(id: '5', name: 'Sticker Mediano', price: 5.00),
-    Product(id: '6', name: 'Bolsa de Palomitas', price: 10.00),
-    Product(id: '7', name: 'Pin', price: 5.00),
-  ];
+  List<Product> _products = [];
 
   // --- PUNTO DE VENTA (Carrito Actual) ---
   final List<SaleItem> _currentSale = [];
@@ -31,27 +25,78 @@ class FinancesProvider extends ChangeNotifier {
   double get dailyRevenue => _dailyRevenue;
   double get saleTotal => _currentSale.fold(0.0, (sum, item) => sum + item.totalPrice);
   
+  // Constructor: Inicia la escucha de datos en Firebase
+  FinancesProvider() {
+    _listenToProducts();
+    _listenToDailyRevenue();
+  }
+
+  // Escucha los productos en tiempo real desde Firestore
+  void _listenToProducts() {
+    _firestore.collection('productos').orderBy('nombre').snapshots().listen((snapshot) {
+      _products = snapshot.docs.map((doc) {
+        final data = doc.data();
+        return Product(
+          id: doc.id,
+          name: data['nombre'] ?? '',
+          price: (data['precio'] ?? 0).toDouble(),
+        );
+      }).toList();
+      notifyListeners();
+    });
+  }
+
+  // Escucha las ventas de HOY para calcular los ingresos en tiempo real
+  void _listenToDailyRevenue() {
+    final now = DateTime.now();
+    final startOfDay = DateTime(now.year, now.month, now.day);
+
+    _firestore.collection('ventas')
+        .where('fecha_registro', isGreaterThanOrEqualTo: Timestamp.fromDate(startOfDay))
+        .snapshots()
+        .listen((snapshot) {
+      double total = 0.0;
+      for (var doc in snapshot.docs) {
+        final data = doc.data();
+        total += (data['total'] ?? 0).toDouble();
+      }
+      _dailyRevenue = total;
+      notifyListeners();
+    });
+  }
+
   // ----------------------------------------------------
   // --- GESTIÓN DE PRODUCTOS (Coordinador) ---
   // ----------------------------------------------------
 
-  // 💡 CAMBIO: Usamos insert(0, ...) para agregar al principio.
-  void addProduct(Product product) {
-    _products.insert(0, product);
-    notifyListeners();
-  }
-
-  void updateProduct(Product product) {
-    final index = _products.indexWhere((p) => p.id == product.id);
-    if (index != -1) {
-      _products[index] = product;
-      notifyListeners();
+  Future<void> addProduct(Product product) async {
+    try {
+      await _firestore.collection('productos').add({
+        'nombre': product.name,
+        'precio': product.price,
+      });
+    } catch (e) {
+      debugPrint("Error al agregar producto: $e");
     }
   }
 
-  void deleteProduct(String id) {
-    _products.removeWhere((p) => p.id == id);
-    notifyListeners();
+  Future<void> updateProduct(Product product) async {
+    try {
+      await _firestore.collection('productos').doc(product.id).update({
+        'nombre': product.name,
+        'precio': product.price,
+      });
+    } catch (e) {
+      debugPrint("Error al actualizar producto: $e");
+    }
+  }
+
+  Future<void> deleteProduct(String id) async {
+    try {
+      await _firestore.collection('productos').doc(id).delete();
+    } catch (e) {
+      debugPrint("Error al eliminar producto: $e");
+    }
   }
   
   // ----------------------------------------------------
@@ -81,10 +126,31 @@ class FinancesProvider extends ChangeNotifier {
     notifyListeners();
   }
   
-  void completeSale() {
-    _dailyRevenue += saleTotal;
-    _currentSale.clear();
-    notifyListeners();
+  Future<void> completeSale() async {
+    if (_currentSale.isEmpty) return;
+
+    try {
+      // Preparamos el resumen de los items vendidos
+      final itemsList = _currentSale.map((item) => {
+        'id_producto': item.product.id,
+        'nombre': item.product.name,
+        'cantidad': item.quantity,
+        'subtotal': item.totalPrice,
+      }).toList();
+
+      // Guardamos la venta en Firebase
+      await _firestore.collection('ventas').add({
+        'total': saleTotal,
+        'items': itemsList,
+        'fecha_registro': FieldValue.serverTimestamp(),
+      });
+
+      // Limpiamos el carrito local
+      _currentSale.clear();
+      notifyListeners();
+    } catch (e) {
+      debugPrint("Error al completar la venta: $e");
+    }
   }
   
   void cancelSale() {

@@ -1,4 +1,9 @@
-allprojects{
+plugins {
+    // Agrega el plugin de servicios de Google para Firebase
+    id("com.google.gms.google-services") version "4.4.2" apply false
+}
+
+allprojects {
     repositories {
         google()
         mavenCentral()

@@ -31,25 +31,21 @@ dependencies:
   flutter:
     sdk: flutter
 
-  # The following adds the Cupertino Icons font to your application.
-  # Use with the CupertinoIcons class for iOS style icons.
   cupertino_icons: ^1.0.8
-
-  #Add line in the momento of programming the List inside the modul assitance
   provider: ^6.0.5
-
-    # <<<<<<<<<< AÑADE ESTA LÍNEA >>>>>>>>>>
   image_picker: ^1.0.4 
-  # ^1.0.4 es la versión actual al momento de escribir, consulta pub.dev para la más reciente si quieres.
-  
-  #To open Files from the device storage
   open_filex: ^4.3.2
-
-  # <<<<<<<<<< LÍNEA A AÑADIR >>>>>>>>>>
   uuid: ^4.3.3
-
-  # Añade esta línea:
   photo_view: ^0.14.0
+
+  # <<<<<<<<<< DEPENDENCIAS DE FIREBASE AÑADIDAS >>>>>>>>>>
+  firebase_core: ^2.24.2
+  firebase_auth: ^4.15.3
+  cloud_firestore: ^4.13.6
+  firebase_storage: ^11.5.6
+  
+  # Opcional pero recomendado para el módulo de Temas y Dinámicas
+  file_picker: ^6.1.1
 
 dev_dependencies:
   flutter_test:

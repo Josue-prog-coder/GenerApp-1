@@ -1,8 +1,7 @@
-// Archivo: /lib/modules/logistics/logistics_image_display.dart (CÓDIGO FINAL CORREGIDO)
+// Archivo: /lib/modules/logistics/logistics_image_display.dart
 
 import 'package:flutter/material.dart';
-import 'dart:io';
-import 'package:open_filex/open_filex.dart';
+import 'package:url_launcher/url_launcher.dart'; // <-- Nuevo import para Firebase URLs
 
 enum LogisticsAction { delete, openExternal } 
 
@@ -11,9 +10,9 @@ enum LogisticsAction { delete, openExternal }
 // =========================================================================
 
 class FullScreenImageViewer extends StatefulWidget {
-  final String imagePath;
+  final String imageUrl;
 
-  const FullScreenImageViewer({super.key, required this.imagePath});
+  const FullScreenImageViewer({super.key, required this.imageUrl});
 
   @override
   State<FullScreenImageViewer> createState() => _FullScreenImageViewerState();
@@ -59,9 +58,15 @@ class _FullScreenImageViewerState extends State<FullScreenImageViewer> {
             transformationController: _controller,
             minScale: 0.5,
             maxScale: 5.0,
-            child: Image.file(
-              File(widget.imagePath),
+            child: Image.network( // <-- Cambiado a Image.network
+              widget.imageUrl,
               fit: BoxFit.contain,
+              loadingBuilder: (context, child, loadingProgress) {
+                if (loadingProgress == null) return child;
+                return const Center(child: CircularProgressIndicator(color: Colors.white));
+              },
+              errorBuilder: (context, error, stackTrace) => 
+                const Center(child: Text("Error al cargar la imagen completa", style: TextStyle(color: Colors.white))),
             ),
           ),
         ),
@@ -75,7 +80,7 @@ class _FullScreenImageViewerState extends State<FullScreenImageViewer> {
 // =========================================================================
 
 class LogisticsImageDisplay extends StatelessWidget {
-  final String? imagePath;
+  final String? imagePath; // <-- Ahora este string contiene una URL web
   final VoidCallback onAddOrEdit;
   final VoidCallback? onDelete;
   final bool isEditable;
@@ -83,29 +88,36 @@ class LogisticsImageDisplay extends StatelessWidget {
   const LogisticsImageDisplay({
     super.key,
     this.imagePath,
-    this.onDelete, // Solo es pasado por Coordinador
+    this.onDelete, 
     required this.onAddOrEdit,
     this.isEditable = true,
   });
 
-  // FUNCIÓN PARA ABRIR EL ARCHIVO CON LA APP NATIVA DEL DISPOSITIVO
+  // FUNCIÓN PARA ABRIR EL ARCHIVO (URL) CON EL NAVEGADOR NATIVO
   void _openFileExternally(BuildContext context) async {
     if (imagePath == null) return;
-    final result = await OpenFilex.open(imagePath!);
-    if (result.type != ResultType.done) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error al abrir archivo: ${result.message}')),
-      );
+    
+    final Uri uri = Uri.parse(imagePath!);
+    try {
+      if (!await launchUrl(uri, mode: LaunchMode.externalApplication)) {
+        throw Exception('No se pudo abrir el enlace');
+      }
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Error al abrir archivo en el navegador')),
+        );
+      }
     }
   }
 
-  // FUNCIÓN PARA ABRIR LA IMAGEN EN PANTALLA COMPLETA CON ZOOM (Nativo)
+  // FUNCIÓN PARA ABRIR LA IMAGEN EN PANTALLA COMPLETA CON ZOOM
   void _showZoomViewer(BuildContext context) {
     if (imagePath != null) {
       Navigator.of(context).push(
         MaterialPageRoute<void>(
           builder: (BuildContext context) {
-            return FullScreenImageViewer(imagePath: imagePath!);
+            return FullScreenImageViewer(imageUrl: imagePath!);
           },
         ),
       );
@@ -114,7 +126,7 @@ class LogisticsImageDisplay extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final bool isImageLoaded = imagePath != null; // NUEVA VARIABLE PARA CLARIDAD
+    final bool isImageLoaded = imagePath != null && imagePath!.isNotEmpty; 
     
     if (!isImageLoaded) {
       // 1. Vista Inicial (Añadir Imagen) - Placeholder
@@ -146,7 +158,7 @@ class LogisticsImageDisplay extends StatelessWidget {
             onTap: () => _showZoomViewer(context), 
             child: Stack(
               children: [
-                // Imagen principal (BoxFit.cover)
+                // Imagen principal desde Internet
                 Container(
                   height: 300,
                   width: double.infinity,
@@ -156,61 +168,65 @@ class LogisticsImageDisplay extends StatelessWidget {
                   ),
                   child: ClipRRect(
                     borderRadius: BorderRadius.circular(12),
-                    child: Image.file(
-                      File(imagePath!),
+                    child: Image.network( // <-- Cambiado a Image.network
+                      imagePath!,
                       fit: BoxFit.cover, 
+                      loadingBuilder: (context, child, loadingProgress) {
+                        if (loadingProgress == null) return child;
+                        return const Center(child: CircularProgressIndicator());
+                      },
                       errorBuilder: (context, error, stackTrace) =>
-                        const Center(child: Text("Error al cargar imagen")),
+                        const Center(child: Text("Error al descargar imagen desde Firebase")),
                     ),
                   ),
                 ),
-                // <<< MENÚ DE OPCIONES (Aparece si la imagen está cargada) >>>
-                if (isImageLoaded) // Muestra el menú si hay algo que ver/abrir
-                  Positioned(
-                    top: 5,
-                    right: 5,
-                    child: Container(
-                      decoration: BoxDecoration(
-                        color: Colors.black.withOpacity(0.5),
-                        borderRadius: BorderRadius.circular(15),
-                      ),
-                      child: PopupMenuButton<LogisticsAction>(
-                        onSelected: (LogisticsAction result) {
-                          if (result == LogisticsAction.delete && onDelete != null) {
-                            onDelete!();
-                          } else if (result == LogisticsAction.openExternal) {
-                            _openFileExternally(context);
-                          }
-                        },
-                        itemBuilder: (BuildContext context) => <PopupMenuEntry<LogisticsAction>>[
-                          // OPCIÓN 1: ABRIR EXTERNAMENTE (Visible para Staff y Coordinador)
+                
+                // <<< MENÚ DE OPCIONES >>>
+                Positioned(
+                  top: 5,
+                  right: 5,
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: Colors.black.withOpacity(0.5),
+                      borderRadius: BorderRadius.circular(15),
+                    ),
+                    child: PopupMenuButton<LogisticsAction>(
+                      onSelected: (LogisticsAction result) {
+                        if (result == LogisticsAction.delete && onDelete != null) {
+                          onDelete!();
+                        } else if (result == LogisticsAction.openExternal) {
+                          _openFileExternally(context);
+                        }
+                      },
+                      itemBuilder: (BuildContext context) => <PopupMenuEntry<LogisticsAction>>[
+                        // OPCIÓN 1: ABRIR EXTERNAMENTE
+                        const PopupMenuItem<LogisticsAction>(
+                          value: LogisticsAction.openExternal,
+                          child: Row(
+                            children: [
+                              Icon(Icons.open_in_new, color: Colors.blue),
+                              SizedBox(width: 8),
+                              Text('Abrir en Navegador'),
+                            ],
+                          ),
+                        ),
+                        // OPCIÓN 2: ELIMINAR (Solo visible si es Coordinador)
+                        if (onDelete != null)
                           const PopupMenuItem<LogisticsAction>(
-                            value: LogisticsAction.openExternal,
+                            value: LogisticsAction.delete,
                             child: Row(
                               children: [
-                                Icon(Icons.open_in_new, color: Colors.blue),
+                                Icon(Icons.delete_outline, color: Colors.red),
                                 SizedBox(width: 8),
-                                Text('Abrir Externamente'),
+                                Text('Eliminar Logística'),
                               ],
                             ),
                           ),
-                          // OPCIÓN 2: ELIMINAR (Solo visible si es Coordinador)
-                          if (onDelete != null) // onDelete es null si es Staff
-                            const PopupMenuItem<LogisticsAction>(
-                              value: LogisticsAction.delete,
-                              child: Row(
-                                children: [
-                                  Icon(Icons.delete_outline, color: Colors.red),
-                                  SizedBox(width: 8),
-                                  Text('Eliminar Logística'),
-                                ],
-                              ),
-                            ),
-                        ],
-                        icon: const Icon(Icons.more_vert, color: Colors.white),
-                      ),
+                      ],
+                      icon: const Icon(Icons.more_vert, color: Colors.white),
                     ),
                   ),
+                ),
               ],
             ),
           ),
@@ -247,4 +263,3 @@ class LogisticsImageDisplay extends StatelessWidget {
     }
   }
 }
-

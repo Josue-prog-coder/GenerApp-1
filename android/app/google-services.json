@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "872382152843",
+    "project_id": "generappv1",
+    "storage_bucket": "generappv1.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:872382152843:android:00755858702eb8b675d48e",
+        "android_client_info": {
+          "package_name": "com.example.ihc_project"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyA8Cm-HMS0IlyklL1GMDQj7KKZWichheMQ"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

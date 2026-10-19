@@ -1,29 +1,40 @@
 import 'package:flutter/material.dart';
-import 'package:ihc_project/providers/participant_provider.dart';
-import 'package:ihc_project/providers/attendance_provider.dart';
-import 'package:ihc_project/providers/logistics_provider.dart'; // <-- Nuevo Import
-import 'package:ihc_project/providers/auth_provider.dart'; // <-- Nuevo Import
-import 'package:ihc_project/providers/materials_provider.dart'; // <-- Nuevo Import
-import 'package:ihc_project/modules/authentication/login_screen.dart'; // Asegúrate de tener este import
-import 'package:ihc_project/providers/finances_provider.dart'; // <-- Nuevo Import
+import 'package:firebase_core/firebase_core.dart'; // <-- Nuevo Import para Firebase
 import 'package:provider/provider.dart';
 
-void main() {
+// Providers
+import 'package:ihc_project/providers/participant_provider.dart';
+import 'package:ihc_project/providers/attendance_provider.dart';
+import 'package:ihc_project/providers/logistics_provider.dart'; 
+import 'package:ihc_project/providers/auth_provider.dart'; 
+import 'package:ihc_project/providers/materials_provider.dart'; 
+import 'package:ihc_project/providers/finances_provider.dart'; 
+
+// Screens
+import 'package:ihc_project/modules/authentication/login_screen.dart'; 
+import 'package:ihc_project/modules/home/home_menu_screen.dart'; // <-- Asegúrate de tener este import
+
+void main() async {
+  // 1. Aseguramos la inicialización de los widgets antes de llamar a Firebase
+  WidgetsFlutterBinding.ensureInitialized();
+  
+  // 2. Inicializamos Firebase
+  await Firebase.initializeApp();
+
   runApp(
-    MultiProvider( // Usamos MultiProvider para envolver la app con varios providers
+    MultiProvider( 
       providers: [
         ChangeNotifierProvider(create: (context) => ParticipantProvider()),
         ChangeNotifierProvider(create: (context) => AttendanceProvider()),
-        ChangeNotifierProvider(create: (context) => AuthProvider()),      // <-- Añadido AuthProvider
-        ChangeNotifierProvider(create: (context) => LogisticsProvider()), // <-- Nuevo Provider de Logística
-        ChangeNotifierProvider(create: (context) => MaterialsProvider()), // <-- REGISTRO NUEVO
-        ChangeNotifierProvider(create: (context) => FinancesProvider()), // <-- REGISTRO NUEVO
+        ChangeNotifierProvider(create: (context) => AuthProvider()),      
+        ChangeNotifierProvider(create: (context) => LogisticsProvider()), 
+        ChangeNotifierProvider(create: (context) => MaterialsProvider()), 
+        ChangeNotifierProvider(create: (context) => FinancesProvider()), 
       ],
       child: const MyApp(),
     ),
   );
 }
-
 
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
@@ -40,8 +51,16 @@ class MyApp extends StatelessWidget {
           accentColor: Colors.redAccent,
         ),
       ),
-      // El Home debe ser el Login (o el menú, si estamos probando sin login)
-      home: const LoginScreen(),
+      // 3. El Home reacciona al estado del AuthProvider
+      home: Consumer<AuthProvider>(
+        builder: (context, auth, _) {
+          if (auth.isAuthenticated) {
+            return const HomeMenuScreen();
+          } else {
+            return const LoginScreen();
+          }
+        },
+      ),
     );
   }
 }
